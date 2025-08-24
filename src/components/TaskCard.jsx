@@ -1,15 +1,32 @@
-import { Edit2, Trash2 } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Edit2, Grip, Trash2 } from 'lucide-react';
 
 const PRIORITIES = JSON.parse(import.meta.env.VITE_TASK_PRIORITIES);
 
 export const TaskCard = ({ category, task, openTaskModal, handleDeleteTask }) => {
-    const draggedTask = null;
+
+    const {
+        attributes,
+        setNodeRef,
+        listeners,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: task.id, data: { type: 'task', task: task, category: category } })
+
     return (
         <div
+            {...attributes}
+            ref={setNodeRef}
+            style={{
+                transition,
+                transform: CSS.Transform.toString(transform),
+                zIndex: isDragging ? 999 : 'auto',
+            }}
             className={
-                `p-3 bg-gray-50 rounded-lg border cursor-move hover:shadow-md transition-all 
-                ${draggedTask && draggedTask.id === task.id ? 'opacity-50 transform rotate-2' : 'hover:bg-gray-100'
-                }`}
+                `p-3 bg-gray-50 rounded-lg border hover:shadow-md transition-all 
+                ${isDragging ? 'opacity-50 transform rotate-2' : 'hover:bg-gray-100'}`}
         >
             <div className='flex justify-between items-start mb-2'>
                 <h3 className='font-medium text-gray-900 text-sm'>{task.title}</h3>
@@ -27,6 +44,12 @@ export const TaskCard = ({ category, task, openTaskModal, handleDeleteTask }) =>
                         title="Delete task"
                     >
                         <Trash2 size={12} />
+                    </button>
+                    <button
+                        {...listeners}
+                        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+                        className="text-gray-400 hover:text-gray-600 p-1 transition-colors" title='Drag to Reorder'>
+                        <Grip size={12} />
                     </button>
                 </div>
             </div>
