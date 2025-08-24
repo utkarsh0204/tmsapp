@@ -196,12 +196,16 @@ const createTask = async (categoryId, title, description, priority, setCategorie
     }
 }
 
-const updateTask = async (id, title, description, priority, setCategories, setErrorMessage, displayMessage) => {
+const updateTask = async (id, title, description, priority, setCategories, setErrorMessage, displayMessage = null, categoryId = null, position = null) => {
     try {
+        let request = { title, description, priority };
+        if (position !== null) {
+            request.position = position;
+        }
         const response = await fetch(API_ENDPOINTS.UPDATE_TASK(id), {
             method: "PUT",
             headers: HEADERS,
-            body: JSON.stringify({ title, description, priority }),
+            body: JSON.stringify(request),
         });
         if (response.status === 400 || response.status === 422) {
             const body = await response.json();
@@ -213,7 +217,9 @@ const updateTask = async (id, title, description, priority, setCategories, setEr
                 }
             }
             console.error("Bad Request:", body);
-            displayMessage(errorMessage);
+            if (displayMessage) {
+                displayMessage(errorMessage);
+            }
             return;
         }
         if (!response.ok) {
@@ -223,15 +229,15 @@ const updateTask = async (id, title, description, priority, setCategories, setEr
         const data = await response.json();
         if (!data || data.status !== "success") {
             console.error(`Failed to update task: ${data.message}`, data.error);
-            displayMessage(data.message || "Failed to update task");
+            if (displayMessage) displayMessage(data.message || "Failed to update task");
             return;
         }
         setErrorMessage("");
         getCategories(setCategories, setErrorMessage);
-        displayMessage(data.message || "Task updated successfully");
+        if (displayMessage) displayMessage(data.message || "Task updated successfully");
     } catch (error) {
         console.error("Error updating task:", error);
-        displayMessage("Failed to update task. Please try again later.");
+        if (displayMessage) displayMessage("Failed to update task. Please try again later.");
     }
 }
 

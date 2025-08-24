@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { api } from "./components/Api";
 import { CategoryCard } from './components/CategoryCard';
 import { CategoryModal } from './components/CategoryModal';
-import { Plus } from 'lucide-react';
+import { Key, Plus } from 'lucide-react';
 import { TaskModal } from './components/TaskModal';
+import { closestCorners, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
 export const App = () => {
 
@@ -11,6 +13,7 @@ export const App = () => {
 
   const [errorMessage, setErrorMessage] = useState('');
   const [categories, setCategories] = useState([]);
+  const [activeId, setActiveId] = useState(null)
   const [draggedOver, setDraggedOver] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -57,6 +60,19 @@ export const App = () => {
     setTaskPriority(DEFAULT_TASK_PRIORITY);
   }
 
+
+
+  const findValueOfItem = (id, type) => {
+    if (type === 'category') {
+      return categories.find(cat => cat.id === id);
+    }
+    if (type === 'task') {
+      return categories.map(cat => cat.tasks.find(task => task.id === id));
+    }
+
+  }
+
+
   const handleDeleteCategory = async (id) => {
     if (window.confirm("Are you sure you want to delete this category? This action cannot be undone.")) {
       try {
@@ -82,6 +98,39 @@ export const App = () => {
       }
     }
   }
+
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragStart = (event) => {
+    const { active } = event;
+    const { id } = active;
+    setActiveId(id);
+  }
+  const handleDragMove = (event) => {
+  }
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (
+      active
+      && over
+      && active.data.current.type === 'task'
+      && over.data.current.type === 'task'
+      && active.id !== over.id) {
+      let activeTask = active.data.current.task;
+      let overTask = over.data.current.task;
+      if (!activeTask || !overTask) {
+        return;
+      }
+      api.updateTask(activeTask.id, activeTask.title, activeTask.description, activeTask.priority, setCategories, setErrorMessage, null, overTask.category_id, overTask.position);
+    }
+  }
+
+
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -123,19 +172,29 @@ export const App = () => {
             {errorMessage}
           </div>
         )}
-        <div className="flex gap-6 overflow-x-auto pb-4">
-          {categories.map((category) => (
-            <CategoryCard
-              key={category.id}
-              category={category}
-              openCategoryModal={openCategoryModal}
-              deleteCategory={handleDeleteCategory}
-              draggedOver={draggedOver}
-              openTaskModal={openTaskModal}
-              handleDeleteTask={handleDeleteTask}
-            />
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-6 overflow-x-auto pb-4">
+            <SortableContext items={categories.map((cat) => `cat_${cat.id}`)}>
+              {categories.map((category) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  openCategoryModal={openCategoryModal}
+                  deleteCategory={handleDeleteCategory}
+                  draggedOver={draggedOver}
+                  openTaskModal={openTaskModal}
+                  handleDeleteTask={handleDeleteTask}
+                />
+              ))}
+            </SortableContext>
+          </div>
+        </DndContext>
         {showCategoryModal && (
           <CategoryModal
             key={"category-modal"}
